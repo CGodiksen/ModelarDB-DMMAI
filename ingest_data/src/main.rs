@@ -1,9 +1,13 @@
 use std::collections::HashMap;
 
+use arrow::compute;
 use arrow::datatypes::{ArrowPrimitiveType, DataType, Field, Schema};
+use arrow::record_batch::RecordBatch;
+use datafusion::parquet::arrow::ParquetRecordBatchStreamBuilder;
+use futures_util::TryStreamExt;
 use modelardb_embedded::TableType;
 use modelardb_embedded::operations::Operations;
-use modelardb_embedded::operations::client::Client;
+use modelardb_embedded::operations::client::{Client, Node};
 use modelardb_types::types::{ArrowTimestamp, ArrowValue};
 
 async fn create_table(mut modelardb_client: Client) {
@@ -33,4 +37,13 @@ async fn create_table(mut modelardb_client: Client) {
 
 fn main() {
     println!("Hello, world!");
+async fn read_wind_data() -> RecordBatch {
+    let file = tokio::fs::File::open("data/wind_cleaned.parquet").await.unwrap();
+    let builder = ParquetRecordBatchStreamBuilder::new(file).await.unwrap();
+
+    let stream = builder.build().unwrap();
+    let record_batches = stream.try_collect::<Vec<_>>().await.unwrap();
+
+    compute::concat_batches(&record_batches[0].schema(), &record_batches).unwrap()
+}
 }

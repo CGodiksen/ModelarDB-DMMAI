@@ -5,6 +5,8 @@ edition = "2024"
 
 [dependencies]
 arrow = "55.0.0"
+datafusion = "47.0.0"
+futures-util = "0.3.31"
 modelardb_embedded = { git = "https://github.com/ModelarData/ModelarDB-RS.git", rev="c07fd61"}
 modelardb_types = { git = "https://github.com/ModelarData/ModelarDB-RS.git", rev="c07fd61" }
 tokio = "1.44.2"

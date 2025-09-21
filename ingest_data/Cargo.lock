@@ -2718,6 +2718,8 @@ name = "ingest_data"
 version = "0.1.0"
 dependencies = [
  "arrow",
+ "datafusion",
+ "futures-util",
  "modelardb_embedded",
  "modelardb_types",
  "tokio",

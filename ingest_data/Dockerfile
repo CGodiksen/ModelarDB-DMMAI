@@ -4,6 +4,9 @@ WORKDIR /usr/src/app
 
 COPY . .
 
-RUN cargo build --profile release
+RUN apt-get update && apt-get install -y protobuf-compiler
 
-CMD ["target/release/ingest_data"]
+
+RUN cargo build --profile dev
+
+CMD ["target/debug/ingest_data"]
