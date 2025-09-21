@@ -2718,6 +2718,7 @@ name = "ingest_data"
 version = "0.1.0"
 dependencies = [
  "arrow",
+ "arrow-flight",
  "datafusion",
  "futures-util",
  "modelardb_embedded",

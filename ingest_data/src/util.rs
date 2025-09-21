@@ -9,6 +9,8 @@ use datafusion::parquet::arrow::ParquetRecordBatchStreamBuilder;
 use futures_util::TryStreamExt;
 use modelardb_types::types::{ArrowTimestamp, ArrowValue, TimestampBuilder};
 
+use crate::INGESTION_INTERVAL_SECS;
+
 /// Read the wind data from a Parquet file and return it as a single RecordBatch.
 pub async fn read_wind_data() -> RecordBatch {
     let file = tokio::fs::File::open("data/wind_cleaned.parquet")
@@ -56,7 +58,8 @@ pub async fn generate_time_series_data(
     let since_the_epoch = start.duration_since(UNIX_EPOCH).unwrap();
 
     let mut next_timestamp: i64 = since_the_epoch.as_micros() as i64;
-    let step = (Duration::from_secs(2).as_micros() as i64) / (data_points.num_rows() as i64);
+    let step = (Duration::from_secs(INGESTION_INTERVAL_SECS).as_micros() as i64)
+        / (data_points.num_rows() as i64);
 
     for _ in 0..data_points.num_rows() {
         timestamps.append_value(next_timestamp);

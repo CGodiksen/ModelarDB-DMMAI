@@ -3,12 +3,16 @@ mod util;
 use std::collections::HashMap;
 
 use arrow::record_batch::RecordBatch;
+use arrow_flight::flight_service_client::FlightServiceClient;
+use arrow_flight::{Action, Ticket};
 use modelardb_embedded::TableType;
 use modelardb_embedded::operations::Operations;
 use modelardb_embedded::operations::client::{Client, Node};
 use tokio::time;
 
 const TABLE_NAME: &str = "wind";
+const INGESTION_INTERVAL_SECS: u64 = 2;
+const FLUSH_INTERVAL_SECS: u64 = 10;
 
 /// Create the wind table in the given ModelarDB client.
 async fn create_table(mut modelardb_client: Client) {
@@ -22,7 +26,8 @@ async fn create_table(mut modelardb_client: Client) {
 }
 
 /// Ingest the given wind data into the given ModelarDB client in an infinite loop by generating
-/// time series data with the given park ID and windmill ID in batches of 1000 rows every 2 seconds.
+/// time series data with the given park ID and windmill ID in batches of 1000 rows every
+/// [`INGESTION_INTERVAL_SECS`] seconds.
 async fn ingest_into_table_task(
     mut modelardb_client: Client,
     wind_data: RecordBatch,
@@ -50,7 +55,32 @@ async fn ingest_into_table_task(
 
         start = end % num_rows;
 
-        time::sleep(time::Duration::from_secs(2)).await;
+        time::sleep(time::Duration::from_secs(INGESTION_INTERVAL_SECS)).await;
+    }
+}
+
+/// Periodically flush and vacuum the given ModelarDB client every [`FLUSH_INTERVAL_SECS`] seconds.
+async fn flush_and_vacuum_task(modelardb_node: Node) {
+    loop {
+        // Flush all data from the node to the remote object store.
+        let mut flight_client = FlightServiceClient::connect(modelardb_node.url().to_owned())
+            .await
+            .unwrap();
+
+        let action = Action {
+            r#type: "FlushNode".to_owned(),
+            body: vec![].into(),
+        };
+
+        flight_client.do_action(action.clone()).await.unwrap();
+
+        // Vacuum the node to remove any deleted data.
+        flight_client
+            .do_get(Ticket::new("VACUUM RETAIN 0".to_owned()))
+            .await
+            .unwrap();
+
+        time::sleep(time::Duration::from_secs(FLUSH_INTERVAL_SECS)).await;
     }
 }
 
@@ -58,11 +88,11 @@ async fn ingest_into_table_task(
 async fn main() {
     // Connect to the two ModelarDB edge nodes and create the table.
     let edge_1 = Node::Server("grpc://host.docker.internal:9991".to_owned());
-    let edge_1_client = Client::connect(edge_1).await.unwrap();
+    let edge_1_client = Client::connect(edge_1.clone()).await.unwrap();
     create_table(edge_1_client.clone()).await;
 
     let edge_2 = Node::Server("grpc://host.docker.internal:9992".to_owned());
-    let edge_2_client = Client::connect(edge_2).await.unwrap();
+    let edge_2_client = Client::connect(edge_2.clone()).await.unwrap();
     create_table(edge_2_client.clone()).await;
 
     let wind_data = util::read_wind_data().await;
@@ -81,4 +111,8 @@ async fn main() {
         "park_1",
         "windmill_2",
     ));
+
+    // Start two tasks that periodically flush and vacuum the two edge nodes.
+    tokio::spawn(flush_and_vacuum_task(edge_1));
+    tokio::spawn(flush_and_vacuum_task(edge_2));
 }
