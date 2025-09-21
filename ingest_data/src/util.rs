@@ -56,7 +56,7 @@ pub async fn generate_time_series_data(
     let since_the_epoch = start.duration_since(UNIX_EPOCH).unwrap();
 
     let mut next_timestamp: i64 = since_the_epoch.as_micros() as i64;
-    let step = (Duration::from_secs(1).as_micros() as i64) / (data_points.num_rows() as i64);
+    let step = (Duration::from_secs(2).as_micros() as i64) / (data_points.num_rows() as i64);
 
     for _ in 0..data_points.num_rows() {
         timestamps.append_value(next_timestamp);
