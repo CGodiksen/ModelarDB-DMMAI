@@ -1,0 +1,96 @@
+x-aws-variables: &aws-variables
+  AWS_ACCESS_KEY_ID: minioadmin
+  AWS_SECRET_ACCESS_KEY: minioadmin
+  AWS_DEFAULT_REGION: eu-central-1
+  AWS_ENDPOINT: http://minio-server:9000
+  AWS_ALLOW_HTTP: true
+
+x-modelardb-variables: &modelardb-variables
+  MODELARDBD_IP_ADDRESS: host.docker.internal
+  AWS_DEFAULT_REGION: eu-central-1
+  AWS_ALLOW_HTTP: true
+
+services:
+  # Object store services.
+  minio-server:
+    image: minio/minio
+    container_name: minio-server
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server --console-address ":9001" /data
+
+  create-bucket:
+    image: minio/mc
+    container_name: create-bucket
+    depends_on:
+      - minio-server
+    entrypoint:
+      /bin/sh -c "
+      sleep 2;
+      /usr/bin/mc alias set modelardb-minio http://minio-server:9000 minioadmin minioadmin;
+      /usr/bin/mc mb modelardb-minio/modelardb;
+      exit 0;
+      "
+
+  # ModelarDB services.
+  modelardb-manager:
+    image: cgodiksen/modelardb
+    container_name: modelardb-manager
+    command: [ "target/release/modelardbm", "s3://modelardb" ]
+    ports:
+      - "9990:9990"
+    environment:
+      <<: *aws-variables
+      MODELARDBM_PORT: 9990
+    depends_on:
+      create-bucket:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [ "CMD", "echo", "ready" ]
+      interval: 2s
+
+  modelardb-edge-1: &modelardb-base
+    image: cgodiksen/modelardb
+    container_name: modelardb-edge-1
+    command: [ "target/release/modelardbd", "edge", "data/edge", "grpc://modelardb-manager:9990" ]
+    ports:
+      - "9991:9991"
+    environment:
+      <<: *modelardb-variables
+      MODELARDBD_PORT: 9991
+    restart: on-failure:10
+    depends_on:
+      modelardb-manager:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "echo", "ready" ]
+      interval: 1s
+
+  modelardb-edge-2:
+    <<: *modelardb-base
+    container_name: modelardb-edge-2
+    ports:
+      - "9992:9992"
+    environment:
+      <<: *modelardb-variables
+      MODELARDBD_PORT: 9992
+    depends_on:
+      modelardb-edge-1:
+        condition: service_healthy
+
+  modelardb-cloud:
+    <<: *modelardb-base
+    container_name: modelardb-cloud
+    command: [ "target/release/modelardbd", "cloud", "data/cloud", "grpc://modelardb-manager:9990" ]
+    ports:
+      - "9999:9999"
+    environment:
+      <<: *modelardb-variables
+      MODELARDBD_PORT: 9999
+    depends_on:
+      modelardb-edge-2:
+        condition: service_healthy
