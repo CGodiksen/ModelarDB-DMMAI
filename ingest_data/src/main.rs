@@ -86,14 +86,18 @@ async fn flush_and_vacuum_task(modelardb_node: Node) {
 
 #[tokio::main]
 async fn main() {
-    // Connect to the two ModelarDB edge nodes and create the table.
-    let edge_1 = Node::Server("grpc://host.docker.internal:9991".to_owned());
-    let edge_1_client = Client::connect(edge_1.clone()).await.unwrap();
-    create_table(edge_1_client.clone()).await;
+    // Connect to the manager node and create the table. This creates the table on each edge node.
+    let manager_node = Node::Manager("grpc://host.docker.internal:9990".to_owned());
+    let manager_client = Client::connect(manager_node).await.unwrap();
 
-    let edge_2 = Node::Server("grpc://host.docker.internal:9992".to_owned());
-    let edge_2_client = Client::connect(edge_2.clone()).await.unwrap();
-    create_table(edge_2_client.clone()).await;
+    create_table(manager_client).await;
+
+    // Connect to the two ModelarDB edge nodes.
+    let edge_1_node = Node::Server("grpc://host.docker.internal:9991".to_owned());
+    let edge_1_client = Client::connect(edge_1_node.clone()).await.unwrap();
+
+    let edge_2_node = Node::Server("grpc://host.docker.internal:9992".to_owned());
+    let edge_2_client = Client::connect(edge_2_node.clone()).await.unwrap();
 
     let wind_data = util::read_wind_data().await;
 
@@ -113,6 +117,9 @@ async fn main() {
     ));
 
     // Start two tasks that periodically flush and vacuum the two edge nodes.
-    tokio::spawn(flush_and_vacuum_task(edge_1));
-    tokio::spawn(flush_and_vacuum_task(edge_2));
+    tokio::spawn(flush_and_vacuum_task(edge_1_node));
+    tokio::spawn(flush_and_vacuum_task(edge_2_node));
+
+    // Wait for CTRL+C signal to exit.
+    tokio::signal::ctrl_c().await.unwrap();
 }
