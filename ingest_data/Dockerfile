@@ -6,4 +6,4 @@ COPY . .
 
 RUN cargo build --profile release
 
-CMD ["target/debug/ingest_data"]
+CMD ["target/release/ingest_data"]

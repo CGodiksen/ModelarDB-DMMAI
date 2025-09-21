@@ -94,3 +94,12 @@ services:
     depends_on:
       modelardb-edge-2:
         condition: service_healthy
+
+  # Service to ingest data into edge nodes.
+  modelardb-ingest:
+    build: ./ingest_data/.
+    image: modelardb-ingest
+    container_name: modelardb-ingest
+    depends_on:
+      modelardb-edge-2:
+        condition: service_healthy
