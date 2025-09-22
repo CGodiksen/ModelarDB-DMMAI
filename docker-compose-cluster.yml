@@ -101,5 +101,5 @@ services:
     image: modelardb-ingest
     container_name: modelardb-ingest
     depends_on:
-      modelardb-edge-2:
+      modelardb-cloud:
         condition: service_healthy
