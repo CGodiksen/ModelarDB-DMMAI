@@ -33,6 +33,7 @@ services:
       sleep 2;
       /usr/bin/mc alias set modelardb-minio http://minio-server:9000 minioadmin minioadmin;
       /usr/bin/mc mb modelardb-minio/modelardb;
+      /usr/bin/mc mb modelardb-minio/datasets;
       exit 0;
       "
 

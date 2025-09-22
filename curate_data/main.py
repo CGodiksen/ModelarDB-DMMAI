@@ -16,4 +16,4 @@ if __name__ == "__main__":
     csv_buffer = io.BytesIO(csv_bytes)
 
     client = Minio("minio-server:9000", access_key="minioadmin", secret_key="minioadmin", region="eu-central-1", secure=False)
-    client.put_object(bucket_name="modelardb", object_name="datasets/wind.csv", length=len(csv_bytes), data=csv_buffer)
+    client.put_object(bucket_name="datasets", object_name="wind.csv", length=len(csv_bytes), data=csv_buffer)
