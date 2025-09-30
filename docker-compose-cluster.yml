@@ -6,7 +6,6 @@ x-aws-variables: &aws-variables
   AWS_ALLOW_HTTP: true
 
 x-modelardb-variables: &modelardb-variables
-  MODELARDBD_IP_ADDRESS: host.docker.internal
   AWS_DEFAULT_REGION: eu-central-1
   AWS_ALLOW_HTTP: true
 
@@ -63,6 +62,7 @@ services:
     environment:
       <<: *modelardb-variables
       MODELARDBD_PORT: 9991
+      MODELARDBD_IP_ADDRESS: modelardb-edge-1
     restart: on-failure:10
     depends_on:
       modelardb-manager:
@@ -79,6 +79,7 @@ services:
     environment:
       <<: *modelardb-variables
       MODELARDBD_PORT: 9992
+      MODELARDBD_IP_ADDRESS: modelardb-edge-2
     depends_on:
       modelardb-edge-1:
         condition: service_healthy
@@ -92,6 +93,7 @@ services:
     environment:
       <<: *modelardb-variables
       MODELARDBD_PORT: 9999
+      MODELARDBD_IP_ADDRESS: modelardb-cloud
     depends_on:
       modelardb-edge-2:
         condition: service_healthy
