@@ -86,18 +86,16 @@ async fn flush_and_vacuum_task(modelardb_node: Node) {
 
 #[tokio::main]
 async fn main() {
-    // Connect to the manager node and create the table. This creates the table on each edge node.
-    let manager_node = Node::Manager("grpc://modelardb-manager:9990".to_owned());
-    let manager_client = Client::connect(manager_node).await.unwrap();
-
-    create_table(manager_client).await;
-
     // Connect to the two ModelarDB edge nodes.
     let edge_1_node = Node::Server("grpc://modelardb-edge-1:9991".to_owned());
     let edge_1_client = Client::connect(edge_1_node.clone()).await.unwrap();
 
     let edge_2_node = Node::Server("grpc://modelardb-edge-2:9992".to_owned());
     let edge_2_client = Client::connect(edge_2_node.clone()).await.unwrap();
+
+    // Create the table on one of the nodes. This creates the table on every node in the ModelarDB
+    // cluster, specifically the two edge nodes and the cloud node.
+    create_table(edge_1_client.clone()).await;
 
     let wind_data = util::read_wind_data().await;
 
@@ -120,6 +118,6 @@ async fn main() {
     tokio::spawn(flush_and_vacuum_task(edge_1_node));
     tokio::spawn(flush_and_vacuum_task(edge_2_node));
 
-    // Wait for CTRL+C signal to exit.
+    // Wait for the CTRL+C signal to exit.
     tokio::signal::ctrl_c().await.unwrap();
 }

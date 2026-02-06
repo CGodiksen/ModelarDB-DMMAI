@@ -21,7 +21,6 @@ docker-compose -p modelardb-cluster -f docker-compose-cluster.yml up
 This will start the following services:
 - `minio-server` - MinIO object storage server.
 - `create-bucket` - A one-time job to create the buckets `modelardb` and `datasets` in MinIO.
-- `modelardb-manager` - ModelarDB Manager node used for managing the ModelarDB cluster.
 - `modelardb-edge-1` - ModelarDB edge node representing an AI controller in the DMMAI framework.
 - `modelardb-edge-2` - ModelarDB edge node representing another AI controller in the DMMAI framework.
 - `modelardb-cloud` - ModelarDB cloud node representing the Data Management Block in the DMMAI framework.
