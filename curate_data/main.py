@@ -5,7 +5,7 @@ from minio import Minio
 
 if __name__ == "__main__":
     # Connect to a cloud node.
-    modelardbd_cloud = modelardb.connect(modelardb.Server("grpc://modelardb-cloud:9999"))
+    modelardbd_cloud = modelardb.connect("grpc://modelardb-cloud:9999")
 
     # Execute a query to retrieve data from the "wind" table.
     record_batch = modelardbd_cloud.read("SELECT * FROM wind LIMIT 100")
