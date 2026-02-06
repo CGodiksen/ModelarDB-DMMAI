@@ -80,6 +80,9 @@ services:
     depends_on:
       modelardb-edge-2:
         condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "echo", "ready" ]
+      interval: 2s
 
   # Service to ingest data into edge nodes.
   modelardb-ingest:
