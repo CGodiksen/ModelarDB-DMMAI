@@ -4,10 +4,11 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-arrow = "55.0.0"
-arrow-flight = "55.0.0"
-datafusion = "47.0.0"
+arrow = "57.0.0"
+arrow-flight = "57.0.0"
+datafusion = "51.0.0"
 futures-util = "0.3.31"
-modelardb_embedded = { git = "https://github.com/ModelarData/ModelarDB-RS.git", rev="c07fd61"}
-modelardb_types = { git = "https://github.com/ModelarData/ModelarDB-RS.git", rev="c07fd61" }
-tokio = "1.44.2"
+modelardb_embedded = { git = "https://github.com/ModelarData/ModelarDB-RS.git", rev="7d8cc3e"}
+modelardb_types = { git = "https://github.com/ModelarData/ModelarDB-RS.git", rev="7d8cc3e" }
+tokio = "1.48.0"
+tonic = "0.14.1"
