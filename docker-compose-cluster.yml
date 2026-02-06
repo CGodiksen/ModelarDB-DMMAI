@@ -5,10 +5,6 @@ x-aws-variables: &aws-variables
   AWS_ENDPOINT: http://minio-server:9000
   AWS_ALLOW_HTTP: true
 
-x-modelardb-variables: &modelardb-variables
-  AWS_DEFAULT_REGION: eu-central-1
-  AWS_ALLOW_HTTP: true
-
 services:
   # Object store services.
   minio-server:
@@ -37,15 +33,16 @@ services:
       "
 
   # ModelarDB services.
-  modelardb-manager:
+  modelardb-edge-1:
     image: cgodiksen/modelardb
-    container_name: modelardb-manager
-    command: [ "target/release/modelardbm", "s3://modelardb" ]
+    container_name: modelardb-edge-1
+    command: [ "target/release/modelardbd", "edge", "data/edge", "s3://modelardb" ]
     ports:
-      - "9990:9990"
+      - "9991:9991"
     environment:
       <<: *aws-variables
-      MODELARDBM_PORT: 9990
+      MODELARDBD_IP_ADDRESS: modelardb-edge-1
+      MODELARDBD_PORT: 9991
     depends_on:
       create-bucket:
         condition: service_completed_successfully
@@ -53,47 +50,33 @@ services:
       test: [ "CMD", "echo", "ready" ]
       interval: 2s
 
-  modelardb-edge-1: &modelardb-base
-    image: cgodiksen/modelardb
-    container_name: modelardb-edge-1
-    command: [ "target/release/modelardbd", "edge", "data/edge", "grpc://modelardb-manager:9990" ]
-    ports:
-      - "9991:9991"
-    environment:
-      <<: *modelardb-variables
-      MODELARDBD_PORT: 9991
-      MODELARDBD_IP_ADDRESS: modelardb-edge-1
-    restart: on-failure:10
-    depends_on:
-      modelardb-manager:
-        condition: service_healthy
-    healthcheck:
-      test: [ "CMD", "echo", "ready" ]
-      interval: 1s
-
   modelardb-edge-2:
-    <<: *modelardb-base
+    image: cgodiksen/modelardb
     container_name: modelardb-edge-2
+    command: [ "target/release/modelardbd", "edge", "data/edge", "s3://modelardb" ]
     ports:
       - "9992:9992"
     environment:
-      <<: *modelardb-variables
-      MODELARDBD_PORT: 9992
+      <<: *aws-variables
       MODELARDBD_IP_ADDRESS: modelardb-edge-2
+      MODELARDBD_PORT: 9992
     depends_on:
       modelardb-edge-1:
         condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "echo", "ready" ]
+      interval: 2s
 
   modelardb-cloud:
-    <<: *modelardb-base
+    image: cgodiksen/modelardb
     container_name: modelardb-cloud
-    command: [ "target/release/modelardbd", "cloud", "data/cloud", "grpc://modelardb-manager:9990" ]
+    command: [ "target/release/modelardbd", "cloud", "data/cloud", "s3://modelardb" ]
     ports:
       - "9999:9999"
     environment:
-      <<: *modelardb-variables
-      MODELARDBD_PORT: 9999
+      <<: *aws-variables
       MODELARDBD_IP_ADDRESS: modelardb-cloud
+      MODELARDBD_PORT: 9999
     depends_on:
       modelardb-edge-2:
         condition: service_healthy
