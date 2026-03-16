@@ -50,4 +50,4 @@ python main.py
 ```
 
 This will connect to the ModelarDB cloud node, execute a query, convert the result to a Pandas DataFrame, and save it
-as a CSV file in the MinO object store. This file can then be registered in the SLICES Metadata Registry System.
+as a CSV file in the MinIO object store. This file can then be registered in the SLICES Metadata Registry System.
