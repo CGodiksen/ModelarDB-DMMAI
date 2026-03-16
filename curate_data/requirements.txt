@@ -2,3 +2,6 @@ cffi==1.17.1
 pyarrow==21.0.0
 pandas==2.3.2
 minio==7.2.16
+modelardb @ file:modelardb_wheels/modelardb-0.0.1-py3-none-linux_x86_64.whl ; sys_platform == "linux"
+modelardb @ file:modelardb_wheels/modelardb-0.0.1-py3-none-macosx_11_0_universal2.whl ; sys_platform == "darwin"
+modelardb @ file:modelardb_wheels/modelardb-0.0.1-py3-none-win_amd64.whl ; sys_platform == "win32"
