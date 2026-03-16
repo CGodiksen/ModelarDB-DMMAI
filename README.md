@@ -38,7 +38,7 @@ Data curation can be done using the ModelarDB Python library. An example script 
 To run the script, first navigate to the `curate_data` folder and install the required dependencies using pip:
 
 ```bash
- pip install --no-cache-dir --upgrade --force-reinstall -r requirements.txt   
+ pip install --no-cache-dir --upgrade --force-reinstall -r requirements.txt
 ```
 
 It is recommended to install the dependencies in a virtual environment to avoid conflicts with other Python packages.
