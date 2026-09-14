@@ -207,3 +207,6 @@ marimo/_lsp/
 __marimo__/
 
 .idea/
+curate_data/.dataset_counter_local
+.vscode/
+py_ingest_data/

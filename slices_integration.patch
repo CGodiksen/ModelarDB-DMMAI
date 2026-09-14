@@ -1,0 +1,137 @@
+diff --git a/curate_data/main.py b/curate_data/main.py
+index ce682a6..4d37bc1 100644
+--- a/curate_data/main.py
++++ b/curate_data/main.py
+@@ -1,7 +1,10 @@
+ import io
+ 
++import tempfile, os
+ import modelardb
+-from minio import Minio
++# from minio import Minio
++
++import upload_to_mrs
+ 
+ if __name__ == "__main__":
+     # Connect to a cloud node.
+@@ -13,8 +16,20 @@ if __name__ == "__main__":
+ 
+     # Save the DataFrame to a CSV file in the MinIO object store.
+     csv_bytes = df.to_csv(index=False).encode("utf-8")
+-    csv_buffer = io.BytesIO(csv_bytes)
++    # csv_buffer = io.BytesIO(csv_bytes)
++
++    # call SLICES script
++    # write bytes to temp file
++    with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
++        tmp.write(csv_bytes)
++        tmp_path = tmp.name
++
++    try:
++        upload_to_mrs.main(tmp_path)
++    finally:
++        os.unlink(tmp_path)
+ 
+-    client = Minio("localhost:9000", access_key="minioadmin", secret_key="minioadmin", region="eu-central-1",
+-                   secure=False)
+-    client.put_object(bucket_name="datasets", object_name="wind.csv", length=len(csv_bytes), data=csv_buffer)
++    # upload_to_mrs.main(csv_bytes)
++    # client = Minio("localhost:9000", access_key="minio_admin", secret_key="minio_admin", region="eu-central-1",
++    #                secure=False)
++    # client.put_object(bucket_name="datasets", object_name="wind.csv", length=len(csv_bytes), data=csv_buffer)
+diff --git a/docker-compose-cluster.yml b/docker-compose-cluster.yml
+index f9ba7ca..b97150b 100644
+--- a/docker-compose-cluster.yml
++++ b/docker-compose-cluster.yml
+@@ -1,32 +1,34 @@
+ x-aws-variables: &aws-variables
+-  AWS_ACCESS_KEY_ID: minioadmin
+-  AWS_SECRET_ACCESS_KEY: minioadmin
++  AWS_ACCESS_KEY_ID: minio_admin
++  AWS_SECRET_ACCESS_KEY: ABCDEFGHIJKLMNOPQRSTUVWXYZ1234
+   AWS_DEFAULT_REGION: eu-central-1
+-  AWS_ENDPOINT: http://minio-server:9000
++  AWS_ENDPOINT: http://minio:9000
+   AWS_ALLOW_HTTP: true
+ 
+ services:
+   # Object store services.
+-  minio-server:
+-    image: minio/minio
+-    container_name: minio-server
+-    ports:
+-      - "9000:9000"
+-      - "9001:9001"
+-    environment:
+-      MINIO_ROOT_USER: minioadmin
+-      MINIO_ROOT_PASSWORD: minioadmin
+-    command: server --console-address ":9001" /data
++  # minio-server:
++  #   image: minio/minio
++  #   container_name: minio-server
++  #   ports:
++  #     - "9000:9000"
++  #     - "9001:9001"
++  #   environment:
++  #     MINIO_ROOT_USER: minioadmin
++  #     MINIO_ROOT_PASSWORD: minioadmin
++  #   command: server --console-address ":9001" /data
+ 
+   create-bucket:
+     image: minio/mc
+     container_name: create-bucket
+-    depends_on:
+-      - minio-server
++    networks:
++      - traefik
++    # depends_on:
++    #   - minio-server
+     entrypoint:
+       /bin/sh -c "
+       sleep 2;
+-      /usr/bin/mc alias set modelardb-minio http://minio-server:9000 minioadmin minioadmin;
++      /usr/bin/mc alias set modelardb-minio http://minio:9000 minio_admin ABCDEFGHIJKLMNOPQRSTUVWXYZ1234;
+       /usr/bin/mc mb modelardb-minio/modelardb;
+       /usr/bin/mc mb modelardb-minio/datasets;
+       exit 0;
+@@ -36,6 +38,8 @@ services:
+   modelardb-edge-1:
+     image: cgodiksen/modelardb
+     container_name: modelardb-edge-1
++    networks:
++      - traefik
+     command: [ "target/release/modelardbd", "edge", "data/edge", "s3://modelardb" ]
+     ports:
+       - "9991:9991"
+@@ -53,6 +57,8 @@ services:
+   modelardb-edge-2:
+     image: cgodiksen/modelardb
+     container_name: modelardb-edge-2
++    networks:
++      - traefik
+     command: [ "target/release/modelardbd", "edge", "data/edge", "s3://modelardb" ]
+     ports:
+       - "9992:9992"
+@@ -70,6 +76,8 @@ services:
+   modelardb-cloud:
+     image: cgodiksen/modelardb
+     container_name: modelardb-cloud
++    networks:
++      - traefik
+     command: [ "target/release/modelardbd", "cloud", "data/cloud", "s3://modelardb" ]
+     ports:
+       - "9999:9999"
+@@ -89,6 +97,13 @@ services:
+     build: ./ingest_data/.
+     image: modelardb-ingest
+     container_name: modelardb-ingest
++    networks:
++      - traefik
+     depends_on:
+       modelardb-cloud:
+         condition: service_healthy
++
++networks:
++  traefik:
++    name: traefik_services
++    external: true

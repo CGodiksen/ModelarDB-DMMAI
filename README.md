@@ -22,7 +22,6 @@ docker-compose -p modelardb-cluster -f docker-compose-cluster.yml up
 
 This will start the following services:
 
-- `minio-server` - MinIO object storage server.
 - `create-bucket` - A one-time job to create the buckets `modelardb` and `datasets` in MinIO.
 - `modelardb-edge-1` - ModelarDB edge node representing an AI controller in the DMMAI framework.
 - `modelardb-edge-2` - ModelarDB edge node representing another AI controller in the DMMAI framework.
@@ -30,7 +29,7 @@ This will start the following services:
 - `modelardb-ingest` - A Rust binary that ingests data into the ModelarDB edge nodes.
 
 When up and running, the ingested data is transferred to the MinIO object store and can be accessed using the MinIO
-web interface at `http://localhost:9001` using `minioadmin` as both username and password.
+web interface at `http://localhost:9001` using `minio_admin` as both username and `ABCDEFGHIJKLMNOPQRSTUVWXYZ1234` as password.
 
 ### Data Curation
 
@@ -49,5 +48,5 @@ is included in this repository. Once installed, the Python script can be run usi
 python main.py
 ```
 
-This will connect to the ModelarDB cloud node, execute a query, convert the result to a Pandas DataFrame, and save it
-as a CSV file in the MinIO object store. This file can then be registered in the SLICES Metadata Registry System.
+This will connect to the ModelarDB cloud node, execute a query, convert the result to a Pandas DataFrame, and upload it
+as a CSV file in to MRS. Subsequently MRS stores the metadata in PostgreSQL and data itself in the MinIO object store. Thus, the file is registered into the MRS.

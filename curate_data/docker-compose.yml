@@ -1,0 +1,15 @@
+services:
+  dmmai:
+    environment:
+      OIDC_TOKEN_URL: http://idp:8080/realms/slices/protocol/openid-connect/token
+      KEYCLOAK_URL: http://idp:8080
+      MRS_BACKEND_URL: http://mrs_backend:8080 
+    build: .
+    container_name: dmmai
+    networks:
+      - traefik
+
+networks:
+  traefik:
+    external: true
+    name: traefik_services
