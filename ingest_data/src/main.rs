@@ -20,10 +20,13 @@ async fn create_table(mut modelardb_client: Client) {
     let schema = util::table_schema();
     let table_type = TableType::TimeSeriesTable(schema, HashMap::new(), HashMap::new());
 
-    modelardb_client
-        .create(TABLE_NAME, table_type)
-        .await
-        .unwrap();
+    match modelardb_client.create(TABLE_NAME, table_type).await {
+        Ok(()) => println!("[MODELARDB] Created table {TABLE_NAME}"),
+        Err(error) if error.to_string().contains("already exists") => {
+            println!("[MODELARDB] Table {TABLE_NAME} already exists; reusing it")
+        }
+        Err(error) => panic!("Failed to create ModelarDB table {TABLE_NAME}: {error}"),
+    }
 }
 
 /// Ingest the given wind data into the given ModelarDB client in an infinite loop by generating
@@ -95,7 +98,8 @@ async fn main() {
     let edge_2_client = Client::connect(&edge_2_url).await.unwrap();
 
     // Create the table on one of the nodes. This creates the table on every node in the ModelarDB
-    // cluster, specifically the two edge nodes and the cloud node.
+    // cluster, specifically the two edge nodes and the cloud node. Reusing an existing table
+    // allows the ingestion service to restart without requiring the Delta table to be deleted.
     create_table(edge_1_client.clone()).await;
 
     let wind_data = util::read_wind_data().await;
