@@ -1,13 +1,20 @@
 services:
-  dmmai:
+  curate_data:
     environment:
       OIDC_TOKEN_URL: http://idp:8080/realms/slices/protocol/openid-connect/token
       KEYCLOAK_URL: http://idp:8080
       MRS_BACKEND_URL: http://mrs_backend:8080 
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: minio_admin
+      MINIO_SECRET_KEY: ABCDEFGHIJKLMNOPQRSTUVWXYZ1234
+      MINIO_METADATA_BUCKET: mrsmetadata
+      DATASET_ID: wind-dataset.json
+      MRS_CLIENT_SECRET: ABCDEFGHIJKLMNOPQRSTUVWXYZ1234
     build: .
     container_name: dmmai
     networks:
       - traefik
+    restart: "no"
 
 networks:
   traefik:

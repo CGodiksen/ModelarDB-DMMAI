@@ -3,7 +3,7 @@ import os
 import requests
 import urllib3
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict, Optional
 from datetime import datetime, timedelta
 import json as _json
 import sys
@@ -88,25 +88,19 @@ class SLICESDatasetUploaderLocal:
         return self.upload_metadata_and_file(metadata, file_path)
 
 
-def main(path_input_dataset_file):
-    # ==================== LOCAL CONFIGURATION ====================
-    USE_CLIENT_CREDENTIALS = True
-    CLIENT_SECRET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234"
-    
-    # =============================================================
-    
-    file_path = Path(path_input_dataset_file)
+def build_default_metadata(file_path: Path) -> Dict[str, Any]:
+    """Hardcoded test metadata, used only when the caller does not supply any."""
     file_size = file_path.stat().st_size if file_path.exists() else 0
-    
+
     now = datetime.now()
     start_time = (now - timedelta(days=60)).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]
     end_time = (now - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]
     created_at = now.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "+00:00"
-    
+
     dataset_num = get_next_dataset_number()
     dataset_id = f"local-dataset-{dataset_num:03d}"
 
-    metadata = {
+    return {
         "$type": "Dataset",
         "identifier": dataset_id,
         "alternateIdentifier": "string",
@@ -191,10 +185,23 @@ def main(path_input_dataset_file):
             }
         })
     }
-    
-    uploader = SLICESDatasetUploaderLocal(use_client_credentials=USE_CLIENT_CREDENTIALS)
-    
-    result = uploader.upload_complete_workflow(None, None, metadata, path_input_dataset_file, CLIENT_SECRET)
+
+
+def main(path_input_dataset_file, metadata: Optional[Dict[str, Any]] = None):
+    """Upload the dataset file together with its metadata to the MRS.
+
+    If `metadata` is None, the hardcoded test metadata is used (original behaviour).
+    """
+    # The client secret comes from the compose environment (MRS_CLIENT_SECRET).
+    client_secret = os.environ["MRS_CLIENT_SECRET"]
+
+    file_path = Path(path_input_dataset_file)
+    if metadata is None:
+        metadata = build_default_metadata(file_path)
+
+    uploader = SLICESDatasetUploaderLocal(use_client_credentials=True)
+
+    result = uploader.upload_complete_workflow(None, None, metadata, str(file_path), client_secret)
     
     with open("upload_result_local.json", "w") as f:
         _json.dump(result, f, indent=2)
@@ -203,4 +210,5 @@ def main(path_input_dataset_file):
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         print(f"Usage: {sys.argv[0]} /path/to/csv/file")
+        sys.exit(1)
     main(sys.argv[1])
