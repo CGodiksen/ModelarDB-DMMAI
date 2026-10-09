@@ -19,6 +19,7 @@ services:
       /usr/bin/mc alias set modelardb-minio http://minio:9000 minio_admin ABCDEFGHIJKLMNOPQRSTUVWXYZ1234;
       /usr/bin/mc mb modelardb-minio/modelardb;
       /usr/bin/mc mb modelardb-minio/datasets;
+      /usr/bin/mc mb modelardb-minio/mrsmetadata;
       exit 0;
       "
 
@@ -79,6 +80,26 @@ services:
     healthcheck:
       test: [ "CMD", "echo", "ready" ]
       interval: 2s
+
+# One-shot service that uploads the dataset metadata to MinIO and then exits.
+  upload-metadata:
+    build: ./upload_metadata/.
+    image: modelardb-upload-metadata
+    container_name: upload-metadata
+    networks:
+      - traefik
+    environment:
+      <<: *aws-variables
+      METADATA_BUCKET: mrsmetadata
+      DATASET_ID: wind-dataset
+      DATASET_FILE: /data/wind_cleaned.parquet
+    volumes:
+      # Adjust to wherever wind_cleaned.parquet lives on the host.
+      - ./ingest_data/data:/data:ro
+    depends_on:
+      create-bucket:
+        condition: service_completed_successfully
+    restart: "no"
 
   # Service to ingest data into edge nodes.
   modelardb-ingest:

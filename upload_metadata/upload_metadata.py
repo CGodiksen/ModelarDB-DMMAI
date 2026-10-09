@@ -16,11 +16,11 @@ import pyarrow.parquet as pq
 from botocore.config import Config
 from botocore.exceptions import BotoCoreError, ClientError
 
+# AWS_ENDPOINT, AWS_DEFAULT_REGION are variable that ModelarDB searches for the object stores
 DATASET_ID = os.environ.get("DATASET_ID", "wind-dataset")
 DATASET_FILE = os.environ.get("DATASET_FILE", "/data/wind_cleaned.parquet")
-BUCKET = os.environ.get("METADATA_BUCKET", "mrsmetadata")
-# MINIO_ENDPOINT wins, then the AWS_ENDPOINT already used by the ModelarDB containers.
-ENDPOINT = os.environ.get("MINIO_ENDPOINT") or os.environ.get("AWS_ENDPOINT") or "http://minio:9000"
+MINIO_METADATA_BUCKET = os.environ.get("METADATA_BUCKET", "mrsmetadata")
+MINIO_ENDPOINT = os.environ.get("MINIO_ENDPOINT") or os.environ.get("AWS_ENDPOINT") or "http://minio:9000"
 REGION = os.environ.get("AWS_DEFAULT_REGION", "eu-central-1")
 MAX_ATTEMPTS = int(os.environ.get("UPLOAD_MAX_ATTEMPTS", "30"))
 RETRY_DELAY_SECS = float(os.environ.get("UPLOAD_RETRY_DELAY_SECS", "2"))
@@ -107,7 +107,7 @@ def main() -> int:
 
     client = boto3.client(
         "s3",
-        endpoint_url=ENDPOINT,
+        endpoint_url=MINIO_ENDPOINT,
         region_name=REGION,
         config=Config(
             s3={"addressing_style": "path"},  # http://minio:9000/bucket/key
@@ -119,17 +119,17 @@ def main() -> int:
     for attempt in range(1, MAX_ATTEMPTS + 1):
         try:
             client.put_object(
-                Bucket=BUCKET,
+                Bucket=MINIO_METADATA_BUCKET,
                 Key=object_name,
                 Body=payload,
                 ContentType="application/json",
             )
-            print(f"[MINIO] Metadata uploaded to s3://{BUCKET}/{object_name}", flush=True)
+            print(f"[MINIO] Metadata uploaded to s3://{MINIO_METADATA_BUCKET}/{object_name}", flush=True)
             return 0
         except (BotoCoreError, ClientError) as error:
             print(
-                f"[MINIO] Attempt {attempt}/{MAX_ATTEMPTS} failed for {ENDPOINT} "
-                f"(bucket={BUCKET}, object={object_name}): {error}",
+                f"[MINIO] Attempt {attempt}/{MAX_ATTEMPTS} failed for {MINIO_ENDPOINT} "
+                f"(bucket={MINIO_METADATA_BUCKET}, object={object_name}): {error}",
                 file=sys.stderr,
                 flush=True,
             )
