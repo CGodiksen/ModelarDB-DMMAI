@@ -2,7 +2,7 @@ use std::iter;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use arrow::array::{RecordBatch, StringArray};
+use arrow::array::{RecordBatch, StringViewArray};
 use arrow::compute;
 use arrow::datatypes::{ArrowPrimitiveType, DataType, Field, Schema};
 use datafusion::parquet::arrow::ParquetRecordBatchStreamBuilder;
@@ -29,8 +29,8 @@ pub async fn read_wind_data() -> RecordBatch {
 pub fn table_schema() -> Schema {
     Schema::new(vec![
         Field::new("timestamp", ArrowTimestamp::DATA_TYPE, false),
-        Field::new("park_id", DataType::Utf8, false),
-        Field::new("windmill_id", DataType::Utf8, false),
+        Field::new("park_id", DataType::Utf8View, false),
+        Field::new("windmill_id", DataType::Utf8View, false),
         Field::new("wind_speed", ArrowValue::DATA_TYPE, false),
         Field::new("pitch_angle", ArrowValue::DATA_TYPE, false),
         Field::new("rotor_speed", ArrowValue::DATA_TYPE, false),
@@ -66,11 +66,11 @@ pub async fn generate_time_series_data(
         next_timestamp += step;
     }
 
-    let park_id_array: StringArray = iter::repeat(Some(park_id))
+    let park_id_array: StringViewArray = iter::repeat(Some(park_id))
         .take(data_points.num_rows())
         .collect();
 
-    let windmill_id_array: StringArray = iter::repeat(Some(windmill_id))
+    let windmill_id_array: StringViewArray = iter::repeat(Some(windmill_id))
         .take(data_points.num_rows())
         .collect();
 
