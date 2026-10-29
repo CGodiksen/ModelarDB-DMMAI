@@ -30,8 +30,6 @@ This will start the following services:
 - `modelardb-cloud` - ModelarDB cloud node representing the Data Management Block in the DMMAI framework.
 - `modelardb-ingest` - A Rust binary that ingests data into the ModelarDB edge nodes.
 
-Use `docker logs -f modelardb-ingest` to follow the output of a service.
-
 When up and running, the ingested data is transferred to the object store and can be accessed using the SILO Console
 at `http://localhost:9001` using `minioadmin` as both username and password. MinIO no longer publishes community
 images, so SILO is used instead. It is fully compatible with MinIO, so MinIO clients such as the `minio` Python
