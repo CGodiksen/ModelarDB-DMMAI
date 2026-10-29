@@ -3,13 +3,10 @@ mod util;
 use std::collections::HashMap;
 
 use arrow::record_batch::RecordBatch;
-use arrow_flight::flight_service_client::FlightServiceClient;
-use arrow_flight::{Action, Ticket};
 use modelardb_embedded::TableType;
 use modelardb_embedded::operations::Operations;
 use modelardb_embedded::operations::client::Client;
 use tokio::time;
-use tonic::transport::Endpoint;
 
 const TABLE_NAME: &str = "wind";
 const INGESTION_INTERVAL_SECS: u64 = 2;
@@ -61,25 +58,13 @@ async fn ingest_into_table_task(
 }
 
 /// Periodically flush and vacuum the given ModelarDB client every [`FLUSH_INTERVAL_SECS`] seconds.
-async fn flush_and_vacuum_task(modelardb_node_url: String) {
-    let endpoint = Endpoint::new(modelardb_node_url).unwrap();
-    let connection = endpoint.connect().await.unwrap();
-    let mut flight_client = FlightServiceClient::new(connection);
-
+async fn flush_and_vacuum_task(mut modelardb_client: Client) {
     loop {
         // Flush all data from the node to the remote object store.
-        let action = Action {
-            r#type: "FlushNode".to_owned(),
-            body: vec![].into(),
-        };
+        modelardb_client.flush_node().await.unwrap();
 
-        flight_client.do_action(action.clone()).await.unwrap();
-
-        // Vacuum the node to remove any deleted data.
-        flight_client
-            .do_get(Ticket::new("VACUUM RETAIN 0".to_owned()))
-            .await
-            .unwrap();
+        // Vacuum the table to remove any deleted data.
+        modelardb_client.vacuum(TABLE_NAME, Some(0)).await.unwrap();
 
         time::sleep(time::Duration::from_secs(FLUSH_INTERVAL_SECS)).await;
     }
@@ -89,10 +74,10 @@ async fn flush_and_vacuum_task(modelardb_node_url: String) {
 async fn main() {
     // Connect to the two ModelarDB edge nodes.
     let edge_1_url = "grpc://modelardb-edge-1:9991".to_owned();
-    let edge_1_client = Client::connect(&edge_1_url).await.unwrap();
+    let edge_1_client = Client::connect(&edge_1_url, None).await.unwrap();
 
     let edge_2_url = "grpc://modelardb-edge-2:9992".to_owned();
-    let edge_2_client = Client::connect(&edge_2_url).await.unwrap();
+    let edge_2_client = Client::connect(&edge_2_url, None).await.unwrap();
 
     // Create the table on one of the nodes. This creates the table on every node in the ModelarDB
     // cluster, specifically the two edge nodes and the cloud node.
@@ -102,22 +87,22 @@ async fn main() {
 
     // Start two tasks that ingest data into the two edge nodes.
     tokio::spawn(ingest_into_table_task(
-        edge_1_client,
+        edge_1_client.clone(),
         wind_data.clone(),
         "park_1",
         "windmill_1",
     ));
 
     tokio::spawn(ingest_into_table_task(
-        edge_2_client,
+        edge_2_client.clone(),
         wind_data,
         "park_1",
         "windmill_2",
     ));
 
     // Start two tasks that periodically flush and vacuum the two edge nodes.
-    tokio::spawn(flush_and_vacuum_task(edge_1_url));
-    tokio::spawn(flush_and_vacuum_task(edge_2_url));
+    tokio::spawn(flush_and_vacuum_task(edge_1_client));
+    tokio::spawn(flush_and_vacuum_task(edge_2_client));
 
     // Wait for the CTRL+C signal to exit.
     tokio::signal::ctrl_c().await.unwrap();
